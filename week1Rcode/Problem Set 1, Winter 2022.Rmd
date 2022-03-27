@@ -1,0 +1,227 @@
+---
+title: "Problem Set 1, Winter 2022"
+author: "Wendy Christensen"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+
+# Load any packages, if any, that you use as part of your answers here
+
+# For example: 
+library(ggplot2)
+library(ggpubr)
+
+```
+
+CONTEXT - DOUGHNUTS DATA
+
+This data set was derived from an experiment conducted by Lowe (1935) (obtained from Snedecor & Cochran, 1989). 
+
+Lowe wanted to learn more about how much fat doughnuts absorb when cooked in different kinds of fat. He tested four kinds of fats (fat_type): canola oil, vegetable shortening, peanut oil, and sunflower oil. He cooked six identical batches of doughnuts using each type of fat. Each batch contained 24 doughnuts. The outcome of interest was the total amount of fat (in grams) absorbed by each batch of doughnuts (total_fat).
+
+Run the code chunk below to read the data into memory and change the type of a variable. 
+
+```{r }
+
+doughnuts <- read.csv("doughnuts.csv",header=TRUE,sep=",") # Loads the CSV file into memory. You may need to adapt this line to work on your computer
+
+doughnuts$fat_type_factor <- as.factor(doughnuts$fat_type) # Creates a new variable and tells R that the values are categorical ("factor")
+
+```
+
+Run the code chunk below to confirm that the variables are of the appropriate type. The str() function is useful for checking four things: The number of rows ("observations"), the number of variables, the names of the variables, and the type of the variables. 
+
+The str() function should confirm all of these for you about this data set. This data set should have 24 rows and three variables. One of these variables, fat_type, should be a character-type ("chr") variable. Another of those variables, total_fat, should be an integer-type ("int") variable. The remaining variable, fat_type_factor, should be a factor-type variable with four levels. 
+
+```{r}
+
+str(doughnuts)
+
+```
+
+## Question 1 - 10 points
+
+Compute the mean and standard deviation for each fat type. Hint: You have sample data, not population data; this matters for computing the standard deviation. 
+
+```{r }
+
+# Write your code to compute your group means and standard deviations in this code chunk
+
+
+```
+
+Canola mean and SD (your answer here):
+
+Shortening mean and SD (your answer here):
+
+Peanut mean and SD (your answer here):
+
+Sunflower mean and SD (your answer here): 
+
+
+
+Next, create a bar plot to visualize the differences in the means. If you are unsure of what a bar plot looks like, there are some examples at this website: https://statisticsglobe.com/barplot-in-r. Please label your Y axis "Mean fat absorbed (grams)" and your X axis "Fat types". Please also have sub-labels for each bar that match the appropriate fat type (canola, shortening, peanut, and sunflower).
+
+Although many bar plots also include a visualization of the variability within groups (e.g., standard error bars), visualizing the variability is not necessary for full credit on this question. 
+
+```{r }
+
+# Write your code for your bar plot here - be sure that it displays in your knitted document
+
+
+
+```
+
+
+## Question 2 - 10 points
+
+You will conduct a one-way ANOVA, but let's assess our assumptions first. Assess the assumption of *normality* visually and quantitatively and comment on how well the data met this assumption.
+
+First, assess this assumption visually:
+```{r }
+
+# Code for visual assessment - be sure that your visual assessment is visible in your knitted document
+
+
+```
+
+Next, assess this assumption quantitatively:
+```{r}
+
+# Code for quantitative assessment - be sure that your results are visible in your knitted document
+
+
+```
+
+Finally, answer the three questions below:
+
+A) What type of visualization did you use to assess the assumption of normality visually?
+
+Your answer here:
+
+B) What type of quantitative test did you conduct to assess the assumption of normality quantitatively? 
+
+Your answer here:
+
+C) Based on the results of your quantitative assessment, do you conclude that your data meet the assumption of normality?
+
+Your answer here: 
+
+
+
+## Question 3 - 10 points
+
+Assess the assumption of *equality of variances* visually and quantitatively and comment on how well the data met this assumption.
+
+First, assess this assumption visually:
+```{r }
+
+# Code for visual assessment - be sure that your visual assessment is visible in your knitted document
+
+
+```
+
+Next, assess this assumption quantitatively:
+```{r}
+
+# Code for quantitative assessment - be sure that your results are visible in your knitted document
+
+
+```
+
+Finally, answer the three questions below:
+
+A) What type of visualization did you use to assess the assumption of equal variances across groups visually?
+
+Your answer here:
+
+B) What type of quantitative test did you conduct to assess the assumption of equal variances across groups quantitatively? 
+
+Your answer here:
+
+C) Based on the results of your quantitative assessment, do you conclude that your data meet the assumption of equal variances across groups?
+
+Your answer here: 
+
+
+## Question 4 - 10 points
+
+You will now conduct a one-way ANOVA analysis using total_fat as the outcome and fat_type_factor as the grouping variable.
+
+First, conduct the analysis and display the result:
+```{r }
+
+# Write your code to conduct the one-way ANOVA here 
+
+doughnuts.aov <- # Complete this line
+  
+
+# Don't forget to display the results of your analysis by using the summary() function!
+
+summary(doughnuts.aov)  
+  
+```
+
+Second, answer the three questions below:
+
+A) What is the null hypothesis being tested in this one-way ANOVA analysis?
+
+Your answer here:
+
+B) Based on the results of your analysis, do you reject or fail to reject the null hypothesis?
+
+Your answer here:
+
+C) Which of the three statements (A, B, or C) is an appropriate conclusion based on the results of your analysis? Only one of the statements is fully correct. 
+
+  Statement A: "I rejected the null hypothesis and concluded that at least one fat type had a statistically significantly different mean amount of fat absorbed than the other fat types."
+  
+  Statement B: "I rejected the null hypothesis and concluded that all of the fat types had statistically significant differences in mean amounts of fat absorbed."
+  
+  Statement C: "I failed to reject the null hypothesis and concluded that there was not a statistically significant difference in the mean amounts of fat absorbed among the fat types." 
+  
+Your answer here (A, B, or C): 
+
+
+
+
+## Question 5 - 10 points
+
+When the null hypothesis in ANOVA is rejected, you conclude that at least one group mean is different than the others. You may then wonder which of the means is different. There are numerous tests that have been developed to answer this question. These are sometimes referred to as "post hoc" tests because they are usually done after an ANOVA has returned a significant result. 
+
+In my experience, the most common of these is the Tukey Honest Significant Difference test, often shortened to Tukey's HSD. You will conduct this analysis to determine which of the fat type means had statistically significant differences from each other. You will need to do some reading on your own to figure out how to conduct and interpret this test.
+
+First, answer the following two questions:
+
+A) How many unique pairwise comparisons of fat type means are possible to test in this data set?
+
+Your answer here: 
+
+B) As discussed in class, multiple pairwise comparisons cause the familywise Type 1 error rate to increase as the number of pairwise comparisons increases; this is why you will use Tukey's HSD, which adjusts for this increase to keep the familywise error rate at 0.05 (5%). If you were not aware of this problem and conducted as many independent-samples t tests as there are unique pairwise comparisons in this data set, what would the familywise Type 1 error rate for those tests be?
+
+Your answer here:
+
+
+Next, conduct the Tukey HSD test and answer the two questions below:
+```{r }
+
+# Write your code to conduct the Tukey HSD test here
+
+
+
+# Be sure that your results are visible in the knitted document
+
+
+```
+
+C) Based on the results of your Tukey HSD test, how many pairs of means have a statistically significant difference from each other?
+
+Your answer here:
+
+D) List the pair/s of means that have statistically significant differences here. Be sure to include the names of the groups. 
+
+Your answer here:
+
+
+

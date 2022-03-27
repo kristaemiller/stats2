@@ -1,0 +1,163 @@
+---
+title: "Best subesets selection demo"
+author: "Wendy Christensen"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+
+library(leaps)
+library(tidyverse)
+
+```
+
+## Preamble
+
+# Data information
+
+CONTEXT - FISHERMAN DATA (adapted from Cathy Durso's material)
+
+Data Source: N.B. Al-Majed and M.R. Preston (2000). "Factors Influencing the Total
+Mercury and Methyl Mercury in the Hair of Fishermen in Kuwait," 
+Environmental Pollution, Vol. 109, pp. 239-250.
+
+   http://users.stat.ufl.edu/~winner/datasets.html, downloaded on 4/23/2019
+
+Description: Factors related to mercury levels among fishermen and a control
+group of non-fishermen.
+
+Variables (names of variables in the data set)
+
+Fisherman indicator  (fisherman)
+
+Age in years  (age)
+
+Residence Time in years   (restime)
+
+Height in cm    (height)
+
+Weight in kg    (weight)
+
+Fish meals per week    (fishmlwk)
+
+Parts of fish consumed: 0=none, 1=muscle tissue only, 2=mt and sometimes
+              whole fish, 3=whole fish  (fishpart)
+              
+Methyl Mercury in mg/g    (MeHg)
+
+Total Mercury in mg/g     (TotHg)
+
+# Reading in data
+
+```{r}
+
+fish <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+fishermen.mercury <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+
+fish$fishpart_factor <- as.factor(fish$fishpart)
+fish$fisherman_factor <- as.factor(fish$fisherman)
+
+str(fish)
+
+```
+
+## Conducting a best subsets selection using the regsubsets() function
+
+For this demo, the outcome variable of interest will be the log of MeHg. The pool of potential predictors will be fisherman, age, restime, height, weight, fishmlwk, and fishpart. 
+
+
+Best subsets selection requires a bit more set-up than forward or backward selection.
+
+```{r}
+
+# Create formula for largest possible model
+
+fmla.full <- as.formula("log(MeHg) ~ fisherman_factor + fishpart_factor + age + restime + height + weight + fishmlwk")
+fmla.full
+
+# Create x and y inputs into regsubsets function
+
+x<-model.matrix(fmla.full, data=fish)
+
+y<-log(fish$MeHg)
+
+```
+
+Let's pause and have a look at what model.matrix does here.
+
+```{r}
+
+x
+
+```
+
+Unlike aov() and lm(), regsubsets() can't create the dummy variables for you. Model.matrix() extracts the design matrix of an existing model object (or the implied design matrix from a formula, as in this example). We now have the data in the form needed to run it through regsubsets(), but we also have a column of ones. That corresponds to the intercept, and that will need to be removed. You can remove it before running regsubsets(), or you can remove it within regsubsets(). We'll do the latter here. 
+
+Now that the set-up is complete, regsubsets() can be used
+```{r}
+
+best<-regsubsets(x=x[,2:ncol(x)], y=y, method="exhaustive", nvmax=9, nbest=1)
+
+best
+
+```
+
+Most of the work has been done for you, but there remains some more work to do to get your final answer. The output of the model object "best" doesn't give you the information you need, but you can manipulate it to get the information you need.
+
+First, you need to know what predictors were included in the best models *of each size*. There are two ways to do this: A "star" table and a "TRUE/FALSE" table (the latter of which is different than the one shown in the previous chunk). You use the summary() function on the "best" object for both. The information is the same between these tables, so choose the one that you find easiest to read. You will need to provide at least one of these two tables in your answers in this course. I prefer the "star" table because I find it easiest to read. 
+
+```{r}
+
+summary(best) # Shows "star" table, which shows the predictors that were in the best model of each size
+
+subsets<-summary(best)$which
+subsets # Shows "TRUE/FALSE" table, which shows the same information as the star table. 
+
+```
+
+Next, you need to determine which of the best models of each size has the smallest BIC value. That model is the model that is selected by best subsets selection
+
+```{r}
+
+qplot(1:length(summary(best)$bic),summary(best)$bic)   # Visualization of BICs
+
+best.subset.bic<-which(summary(best)$bic==min(summary(best)$bic))[1] # Min function searches BICs and shows model number
+best.subset.bic
+
+```
+
+Finally, you should examine the model that is the best. You can do this by referring back to the star/TF table mentioned earlier, or you can use a little bit of code to pull the names directly from what produced the TF table.
+
+```{r}
+
+varnames<-attr(subsets,"dimnames")[[2]]
+varnames.best <- varnames[subsets[best.subset.bic,]] 
+varnames.best
+
+bestsubsets.model = lm(log(MeHg)~weight+fishpart_factor, data=fish) 
+summary(bestsubsets.model)
+
+```
+
+
+## Using AIC to compare models instead of BIC. 
+
+There's no requirement that you use multiple automated model selection methods, but if you were to do so, you would need to have all comparisons in the same "metric" for them to be valid. Because the step() function uses AIC for forward and backward selection, it makes sense to convert the best subsets results to AIC as well for comparison purposes.
+
+The code for this is in the async and is replicated below (with the appropriate data set swapped in).
+
+```{r}
+
+BICs<-summary(best)$bic
+qs<-1:length(BICs)+2
+n<-nrow(fish)
+AICs<-BICs-log(n)*qs+2*qs
+
+BICs
+AICs
+
+qplot(1:length(AICs),AICs)
+
+```
+
+The best model at each size doesn't change, so you can reference the same star/TF table as before to determine what predictors are in the best model for AIC. AIC shows that the best model is the four-predictor model, which is the same as BIC. That won't always be true, but it happens to be so in this particular case. 

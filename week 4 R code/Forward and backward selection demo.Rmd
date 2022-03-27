@@ -1,0 +1,194 @@
+---
+title: "Forward/backward selection demo"
+author: "Wendy Christensen"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+
+library(stringr)
+
+```
+
+## Preamble
+
+# Data information
+
+CONTEXT - FISHERMAN DATA (adapted from Cathy Durso's material)
+
+Data Source: N.B. Al-Majed and M.R. Preston (2000). "Factors Influencing the Total
+Mercury and Methyl Mercury in the Hair of Fishermen in Kuwait," 
+Environmental Pollution, Vol. 109, pp. 239-250.
+
+   http://users.stat.ufl.edu/~winner/datasets.html, downloaded on 4/23/2019
+
+Description: Factors related to mercury levels among fishermen and a control
+group of non-fishermen.
+
+Variables (names of variables in the data set)
+
+Fisherman indicator  (fisherman)
+
+Age in years  (age)
+
+Residence Time in years   (restime)
+
+Height in cm    (height)
+
+Weight in kg    (weight)
+
+Fish meals per week    (fishmlwk)
+
+Parts of fish consumed: 0=none, 1=muscle tissue only, 2=mt and sometimes
+              whole fish, 3=whole fish  (fishpart)
+              
+Methyl Mercury in mg/g    (MeHg)
+
+Total Mercury in mg/g     (TotHg)
+
+# Reading in data
+
+```{r}
+
+fish <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+fishermen.mercury <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+
+fish$fishpart <- as.factor(fish$fishpart)
+fish$fisherman <- as.factor(fish$fisherman)
+
+str(fish)
+
+```
+
+## Conducting a forward selection using the step() function
+
+For this demo, the outcome variable of interest will be the log of MeHg. The pool of potential predictors will be fisherman, age, restime, height, weight, fishmlwk, and fishpart. 
+
+If you haven't already, have a look at the documentation for the step() function
+
+```{r}
+
+?step()
+
+```
+
+The only required arguments to successfully execute the step() function are "object" and "scope", which are the first two arguments in the function. You will need a third one to conduct forward selection (direction="forward"). I highly recommend also using the "trace" argument (trace = 1) to view the progression of the automated model selection because it's usually the only way you'll know if you made the type of mistakes that make your analysis wrong but still allow the function to execute. 
+
+Per the documentation, the object argument is used as the initial model. Because forward selection starts with an intercept-only model (a.k.a. a null model or a mean-only model), let's create a model object that contains such a model and looks at what it produces. 
+
+```{r}
+
+null.model = lm(log(MeHg)~1, data=fish)
+summary(null.model)
+
+```
+
+Success! We can tell from the output that the outcome is the log of MeHg and that there is a single row in the Coefficients table: the intercept. We will use null.model as our object argument. 
+
+Next, we need to put something into the scope argument. Per the documentation, the scope argument defines the "range of models examined in the stepwise search". Don't let the "stepwise" term fool you here; this applies to any kind of automated selection done using the step() function. In the case of forward selection, it contains our pool of potential predictors. 
+
+Let's try making a model object that contains a model that includes all of our predictors that are under consideration.
+
+```{r}
+
+full.model = lm(log(MeHg) ~ fisherman + age + restime + height + weight + fishmlwk + fishpart, data=fish)
+summary(full.model)
+
+```
+
+Success! We can tell from the output that the outcome is the log of MeHg and that all of our variables under consideration are in the model. We will use full.model as our scope argument. 
+
+Now that we have the necessary inputs, let's try conducting the forward selection. The trace argument is set to 1 so we can see what the step() function is doing at each step.
+
+```{r}
+
+forward.model.wrong<-step(null.model,scope=full.model,direction="forward",trace=1)
+
+```
+
+It doesn't look like much happened. This is because the scope argument needs a slightly different input than the object argument. Specifically, it needs to be a *formula* which is not the same as a *model*. Here's how to do this:
+
+```{r}
+
+fmla.full <- as.formula("log(MeHg) ~ fisherman + age + restime + height + weight + fishmlwk + fishpart")
+fmla.full
+
+```
+
+Notice that the text string produced when you print fmla.full in the console window is the same text you would enter into the lm() function to specify this model. If you use some of the shortcuts shown in the async material, the str_c() function ("string concatenation") from the stringr() package can help with this. It's not necessary in this example, but str_c() can be used to pull together multiple strings into a single one to make a formula.
+
+```{r}
+
+fmla.full.strc <- as.formula(str_c("log(MeHg) ~ ", "fisherman + age + restime + height + weight + fishmlwk + fishpart"))
+fmla.full.strc
+
+```
+
+Let's try the forward selection again using fmla.full in the scope argument.
+
+```{r}
+
+forward.model.right<-step(null.model,scope=fmla.full,direction="forward",trace=1)
+
+```
+
+Success! We know that a forward selection was conducted because the first step includes just log(MeHg) ~ 1. The second step added weight, and the third step added fishpart. There is no fourth step because the forward selection algorithm terminated at that point. 
+
+Also, note that the AIC values in each step are negative. Information criteria can be negative, so seeing negative values doesn't mean that anything is wrong. There is sometimes confusion about how to interpret negative information criteria because the most common phrasing of how to do so is "smaller/lower is better". When the information criterion values are positive, then the best model is the one with the value closest to zero. If there are negative values, then the value that is most negative is the best model. 
+
+Let's examine the model selected using forward selection using the summary function. 
+
+```{r}
+
+summary(forward.model.right)
+
+```
+
+This is a good example of why you should always include the trace argument the first time you conduct any given forward selection. The step() function executed without an error, but no forward selection was conducted because the function will use the initial model in its place if it doesn't have a valid input (this is explained in the Details section of the documentation). To demonstrate, the summary of the incorrect forward selection is just an intercept-only model. 
+
+```{r}
+
+summary(forward.model.wrong)
+
+```
+
+
+
+## Conducting a backward selection using the step() function
+
+Conducting a backward selection is similar to conducting a forward selection. The main differences are (1) the direction changes to "backward" and (2) the object and scope arguments need to be changed to match what backward selection does. Backward selection starts with a model containing all variables under consideration and works toward an intercept-only model. Thus, backward selection requires a full model in the object argument and a null model formula in the scope argument. 
+
+Although we already have the full model saved from the forward selection demonstration, we'll re-save it here for completeness' sake.
+
+```{r}
+
+full.model = lm(log(MeHg) ~ fisherman + age + restime + height + weight + fishmlwk + fishpart, data=fish)
+summary(full.model)
+
+```
+
+Now, let's make the null model formula.
+
+```{r}
+
+fmla.null <- as.formula("log(MeHg) ~ 1")
+fmla.null
+
+```
+
+We can now conduct the backward selection. Again, I highly recommend always setting trace=1 to check that you get the output you're expecting. 
+
+```{r}
+
+backward.model.right<-step(full.model,scope=fmla.null,direction="backward",trace=1)
+
+```
+
+Success! As expected, the selection process starts with a full model and drops predictors one-by-one until the stopping criterion is met. 
+
+
+```{r}
+
+summary(backward.model.right)
+
+```

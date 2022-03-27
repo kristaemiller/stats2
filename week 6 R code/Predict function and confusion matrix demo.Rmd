@@ -1,0 +1,172 @@
+---
+title: "Predict() Function and Confusion Matrix demo"
+author: "Wendy Christensen"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+
+# no packages required
+
+```
+
+## Preamble
+
+# Data information
+
+CONTEXT - FISHERMAN DATA (adapted from Cathy Durso's material)
+
+Data Source: N.B. Al-Majed and M.R. Preston (2000). "Factors Influencing the Total
+Mercury and Methyl Mercury in the Hair of Fishermen in Kuwait," 
+Environmental Pollution, Vol. 109, pp. 239-250.
+
+   http://users.stat.ufl.edu/~winner/datasets.html, downloaded on 4/23/2019
+
+Description: Factors related to mercury levels among fishermen and a control
+group of non-fishermen.
+
+Variables (names of variables in the data set)
+
+Fisherman indicator  (fisherman)
+
+Age in years  (age)
+
+Residence Time in years   (restime)
+
+Height in cm    (height)
+
+Weight in kg    (weight)
+
+Fish meals per week    (fishmlwk)
+
+Parts of fish consumed: 0=none, 1=muscle tissue only, 2=mt and sometimes
+              whole fish, 3=whole fish  (fishpart)
+              
+Methyl Mercury in mg/g    (MeHg)
+
+Total Mercury in mg/g     (TotHg)
+
+# Reading in data
+
+```{r}
+
+fish <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+fishermen.mercury <- read.csv("fishermen_mercury.csv", header=TRUE, sep=",")
+
+fish$fishpart_factor <- as.factor(fish$fishpart)
+fish$fisherman_factor <- as.factor(fish$fisherman)
+
+str(fish)
+
+```
+
+# Creating a binarized outcome 
+
+The state of New York requires any blood test of methyl mercury with a result greater than 5 to be reported to their department of public health (https://www.health.ny.gov/environmental/chemicals/mercury/docs/exposure_levels.htm). We'll dichotomize the methyl mercury variable by setting every observation greater than 4.944* to 1 (mandatory report) and anything equal to or less than 4.944 to zero (no report).
+
+*Given that this is a legal requirement, a company may want to be cautious with rounding errors right near the report threshold. That is, to prevent non-compliance, they could treat 4.945 -> 4.95 -> 5 (report) and 4.944 -> 4.94 -> 4.9 (don't report)
+
+```{r}
+
+summary(fish$MeHg)
+
+fish$MeHg_report <- as.numeric(fish$MeHg > 4.944)
+
+str(fish)
+
+```
+
+## Fitting the logistic model
+
+We'll use fisherman, age, restime, height, weight, fishmlwk, and fishpart_factor to predict the MeHg_report variable. 
+
+```{r}
+
+report.logreg <- glm(MeHg_report ~ fisherman_factor + age + restime + height + weight + fishmlwk + fishpart_factor, family="binomial", data=fish)
+summary(report.logreg)
+
+```
+
+The units of the logistic regression coefficients are not in the units of the original predictors. Instead, the units are instead "logits" (log-odds). The interpretation is similar, though: a positive coefficient means that the predicted log-odds of "success" increases as the predictor value increases (holding all other predictors constant), and a negative coefficient means that the predicted log-odds of "success" decreases as the predictor value increases (holding all other predictors constant). 
+
+There are two significant predictors in this model: weight and fishmlwk. Both of the coefficients are positive. As discussed during the live session, you can use a "gist" interpretation to interpret these coefficients in context:
+
+Weight: As a person's weight increases, holding all other predictors constant, a mandatory report of blood methyl mercury content becomes *more* likely. 
+Fishmlwk: As a number of fish meals per week increases, holding all other predictors constant, a mandatory report of blood methyl mercury content becomes *more* likely. 
+
+Restime has a negative coefficient. Although it is NOT statistically significant (you wouldn't usually interpret it), let's interpret the coefficient to give you an example of how to interpret a negative coefficient:
+
+Restime: As the number of years a person has resided in the area increases, holding all other predictors constant, a mandatory report of blood methyl mercury becomes *less* likely. 
+
+## Creating a confusion matrix
+
+First, you need to obtain the binary predictions from the model. You'll get this by first obtaining the *predicted probabilities* from the model, then converting the probabilities to a *binary outcome* by classifying predicted probabilities >= 50% to ones/TRUE and all others as zeroes/FALSE. 
+
+The predict() function is handy for the first task. If you add type="response", you will get the probabilities directly. If you forget to add type="response" to the predict() function, you'll end up with the predicted logits. That's not inherently a bad thing as long as you remember that the prediction cutoff for logits is 0, not 50%. That said, probabilities are more intuitive for most people, so I recommend using the predicted probabilities in practice instead of the predicted logits. For the purposes of this course, please use the probabilties. 
+
+```{r}
+
+probs.logreg <- predict(report.logreg, type="response") # Saves the predicted probabilities generated by the model; no newdata argument is needed (but you would need it if you used train/validate/test)
+
+preds.logreg <- probs.logreg >= .5 # Binarizes the predicted probabilities into binary predictions 
+
+table(preds.logreg) # It's always a good idea to look at your results, and this helps you confirm that your precision computation is correct  
+
+# Quick demonstration of generating predicted logits and binarization, but please use what's above this line for the purposes of this course. 
+
+logits.logreg <- predict(report.logreg) 
+pred.logits.logreg  <- logits.logreg  >= 0
+table(pred.logits.logreg)
+
+```
+
+Next, have a look at your actual MeHg_report variable. It will help you confirm that you made your confusion matrix correctly and that you computed recall correctly. 
+
+```{r}
+
+table(fish$MeHg_report)
+
+```
+
+Finally, use the table() function to make the confusion matrix. The first argument of table() indicates the rows and the second argument indicates the columns of the confusion matrix.
+
+```{r}
+
+confusion.matrix <- table(Actual = fish$MeHg_report, Predicted = preds.logreg)
+confusion.matrix
+
+```
+
+## Computing confusion matrix-based indices of model performance
+
+Accuracy
+```{r}
+
+accuracy <- sum(diag(confusion.matrix))/sum(confusion.matrix)  # True positives and negatives will always be on the diagonal of the confusion matrix
+accuracy 
+
+```
+
+Precision
+```{r}
+
+precision <- confusion.matrix[2,2]/sum(confusion.matrix[,2]) # You will need to check the orientation of your confusion matrix. In this matrix, the predicted positives - both true positives and false positives - are in the right column
+precision
+
+```
+
+Recall
+```{r}
+
+recall <- confusion.matrix[2,2]/sum(confusion.matrix[2,]) # Again, you'll need to check the orientation of your confusion matrix. Here, the actual positives - both true positives and false negatives - are in the bottom row. 
+recall
+
+```
+
+F1 Score 
+```{r}
+
+F1 = 2*((precision*recall)/(precision+recall)) # No need to re-type if you save precision and recall as objects
+F1
+
+```

@@ -1,0 +1,339 @@
+---
+title: "final_project"
+author: "Emma Bright and Krista Miller"
+date: "03/13/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(MASS)
+library(scatterplot3d)
+library(tidyverse)
+library(ggplot2)
+library(poLCA) 
+library(ggpubr)
+library(ggthemes)
+library(hrbrthemes)
+library("likert")
+library("plyr")
+library("dplyr")
+library("corrplot")
+library("ggcorrplot")
+
+```
+
+
+Import initial survey data and convert the features to factors, so that we can perform Exploratory analysis.
+```{r}
+coffee <- read.csv("coffee_full.csv", header=TRUE, sep=",")
+
+coffee[sapply(coffee, is.integer)] <- lapply(coffee[sapply(coffee, is.integer)], 
+                                       as.factor)
+coffee[sapply(coffee, is.character)] <- lapply(coffee[sapply(coffee, is.character)], 
+                                      as.factor)
+str(coffee)
+```
+
+Because of it is important to consider that the researcher performing the LCA must interpret the probability of each of the variables in the LCA model output, we would like to select 2 indicator variables from each of the following categories of questions within our survey data:
+
+Demographic information about customers
+Their current behavior in buying Starbucks
+Facilities and features of Starbucks that contribute to the behavior
+
+# Demographic summary information
+Answering questions about who answered our survey
+
+```{r}
+demo_vars <- c('Gender', 'Age', 'EmployStatus', 'Income')
+summary(coffee[demo_vars])
+
+```
+Based on the demographic information it looks like the majority of the survey respondents were low income, students or employed persons, between the ages for 20 and 29. 
+
+```{r}
+ggplot(coffee, aes(x = factor(Gender), fill = as.factor(Income))) + 
+    theme_classic()+
+    geom_bar()
+
+```
+
+```{r}
+ggplot(coffee, aes(x = factor(EmployStatus), fill = as.factor(Age))) + 
+    theme_classic()+
+    geom_bar()
+
+```
+
+```{r}
+ggplot(coffee, aes(x = factor(Age), fill = as.factor(Income))) + 
+    theme_classic()+
+    scale_fill_brewer(palette="Set3")+
+    ggtitle("Distribution of Age and Income Responses") +
+    xlab("") + ylab("Count")+
+    theme(legend.title = element_blank())+
+    geom_bar()
+```
+
+
+# Their current behavior in buying Starbucks
+```{r}
+exp_vars <- c('Visit', 'How_Consume', 'Time', 'Location', 'Membership',
+              'Purchases', 'MoneySpent' )
+
+summary(coffee[exp_vars])
+
+ggplot(coffee, aes(x = Visit, fill=factor(..count..))) + 
+    theme_classic()+
+    geom_bar()+
+  ggtitle("How often do you visit Starbucks?") +
+  xlab("") + ylab("Count")+
+  theme(legend.position = "None")+
+  scale_fill_manual(values=c("#f88071", "#f88071", "#f88071", "#f88071", "#f88071"))
+
+
+ggplot(coffee, aes(x = How_Consume, fill=factor(..count..))) + 
+    theme_classic()+
+    geom_bar()+
+  ggtitle("How do you get your coffee from Starbucks?") +
+  xlab("") + ylab("Count")+
+  theme(legend.position = "None")+
+  scale_fill_manual(values=c("#6c7995", "#6c7995", "#6c7995", "#6c7995", "#6c7995"))+
+  coord_flip()
+```
+
+We thought that the respondents may not be regular Starbucks members and the survey may have been included as some sort of promotional offer due to the fact that the Visit Frequency was primarily "Rarely".  This could impact our analysis as we're looking to identify clusters of customers within our group based upon their buying patterns, demographics, etc. 
+
+
+# Facilities and features of Starbucks that contribute to the behavior
+
+```{r}
+demo_vars <- c('Quality', 'Price', 'PromotionsImportance', 'Ambiance',
+               'WiFi', 'Service', 'Choose', 'Promo')
+summary(coffee[demo_vars])
+
+
+```
+
+
+Correlation plots for numerical survey responses:
+```{r}
+
+coffee2<- read.csv("coffee_full.csv", header=TRUE, sep=",")
+
+head(coffee2)
+cormat<- coffee2 %>%
+  select('Quality', 'Price', 'PromotionsImportance', 'Ambiance', 'WiFi', 'Service', 'Choose') %>%
+  cor(., use= "pairwise.complete.obs")
+
+
+corrplot(cormat)
+
+ggcorrplot(cormat, # correlation matrix
+           type = "lower", # print the lower part of the correlation matrix
+           hc.order = TRUE, # hierarchical clustering of correlations
+           lab = TRUE) # add correlation values as labels
+
+
+```
+
+Stacked bar chart for survey experience responses:
+```{r}
+
+items<- select(coffee, 'Quality', 'Price', 'PromotionsImportance', 'Ambiance', 'WiFi', 'Service')
+
+names(items) <- c(
+  Quality="How would you rate the quality of Starbucks compared to other brands?",
+  Price="How would you rate the price range at Starbucks?",
+  PromotionsImportance="How important are sales and promotions in your purchase decision?", 
+  Ambiance="How would you rate the ambiance at Starbucks?",
+  WiFi= "How would you rate the WiFi quality at Starbucks?",
+  Service= "How would you rate the service at Starbucks?")
+
+# A custom function to recode numerical responses into ordered factors
+likert_recode <- function(x) {
+  y <- ifelse(is.na(x), NA,
+              ifelse(x == 1, "Strongly disagree",
+                     ifelse(x == 2, "Disagree",
+                            ifelse(x == 3, "Agree", "Strongly agree"))))
+  
+  y <- factor(y, levels = c("Strongly disagree", "Disagree", "Agree", "Strongly agree"))
+  
+  return(y)
+}
+
+# Transform the items into factors and save the data set as a likert object
+items_likert <- items %>%
+  mutate_all(likert_recode) %>%
+  likert()
+
+plot(items_likert, 
+     # Group the items alphabetically
+     group.order=names(items),
+     # Plot the percentages for each response category
+     plot.percents = TRUE,
+     # Plot the total percentage for negative responses
+     plot.percent.low = FALSE,
+     # Plot the total percentage for positive responses
+     plot.percent.high = FALSE,
+     # Whether response categories should be centered
+     # This is only helpful when there is a middle response
+     # option such as "neutral" or "neither agree nor disagree"
+     centered = FALSE,
+     # Wrap label text for item labels
+     wrap=30)
+
+```
+
+The final variables we selected for our model were: 
+age, income, timeSpend, method, productRate, serviceRate
+
+LCA work is below: 
+```{r}
+#Read in csv and verify that csv is encoded correctly:
+coffee_encode <- read.csv("starbucks_survey.csv", header=TRUE, sep=",")
+
+columns_to_keep<- c("age", "income", "timeSpend", "method", "productRate", "serviceRate")
+
+coffee_encode<- coffee_encode[columns_to_keep]
+coffee_encode<- coffee_encode[-c(92), ] 
+
+# we needed to change the name of this column as it threw errors for being a 
+# reserved word in R
+coffee_encode$consume<- coffee_encode$method  
+
+# we had to add one to each of the variables to ensure that all manifest variables
+# were properly encoded for poLCA package
+coffee_encode=coffee_encode+1
+
+#verify values are encoded properly as factors:
+str(coffee_encode) 
+
+
+```
+
+# Perform LCA Analysis
+We will perform the LCA analysis and iteratively add classes to determine which number of classes results in a best fit model for our data. 
+
+```{r}
+set.seed(100)
+#example of building a 
+formula<- cbind(age, income, timeSpend, consume, productRate, serviceRate)~1
+
+ch1<- poLCA(formula,coffee_encode,nclass=1)
+ch2<- poLCA(formula,coffee_encode,nclass=2)
+ch3<- poLCA(formula,coffee_encode,nclass=3)
+ch4<- poLCA(formula,coffee_encode,nclass=4)
+
+aics<- c(ch1$aic, ch2$aic, ch3$aic, ch4$aic )
+bics<- c(ch1$bic, ch2$bic, ch3$bic, ch4$bic)
+nclasses<- c(1, 2, 3, 4)
+
+# method - special word in R! Had to rename method column
+```
+
+# plotting our AIC data
+```{r}
+library(hrbrthemes)
+
+aics_df<- data.frame(nclasses, aics)
+
+ggplot(data= aics_df, aes(x=nclasses, y=aics)) +
+    geom_line( color="grey") +
+    geom_point(shape=21, color="black", fill="#69b3a2", size=3) +
+    theme_ipsum() +
+    ggtitle("Number of classes and AIC values")
+```
+# plotting our BIC data
+```{r}
+library(hrbrthemes)
+
+bics_df<- data.frame(nclasses, bics)
+
+ggplot(data= bics_df, aes(x=nclasses, y=bics)) +
+    geom_line( color="grey") +
+    geom_point(shape=21, color="black", fill="#69b3a2", size=3) +
+    theme_ipsum() +
+    ggtitle("Number of classes and BIC values")
+```
+
+Our chosen 2-class model output. 
+
+```{r}
+ch2
+```
+Age:
+Class 1: 80% probability that this class will answer age range 2 (corresponds to 20-29 age range) <- elder Millennial Class 2: ~50% probability that this class will answer age range 3 (30-39 age range) <- gen X
+
+Income:
+Class 1: 68% probability score score 1 (poorest income range) <- Poorer Population
+Class 2: normal probability, skewing left for higher income<- Middle Class Population
+
+Time Spent:
+Class 1: 62% probability score 1 (less than 30 min) <- Seem to be on the go. 
+Class 2: 40% probability score 2 (1-2 hours) <- Could work from home or have more free time during the day. 
+
+Consume:
+Class 1: 49% probability score 3 (take away)<- Seem to be on the go. 
+Class 2: 55% probability score 1 (dine in)<- Could work from home or have more free time during the day. 
+
+Product Rate:
+Class 1: 34% scoring 4, 34% scoring 5 <- Seemed to be there for convenience rather than a great product. 
+Class 2: 79% scoring 5<- Loyal Starbucks patrons. 
+
+Service Rate:
+Class 1: 44.7% scoring 5 <- Have a pleasurable, on-the-go experience, and rate service highly. 
+Class 2: 40% score 4, 44% score 5 <- Have a fine overall experience, don't rate service as highly.
+
+Estimated class memberships:
+ 0.8132 0.1868 
+ 
+81% estimated to be in class 1
+18% estimated to be in class 2
+
+
+Notes/Conclusions:
+-We assumed this data would not be reflective of starbucks consumer patterns, based on the fact that this was a google survey and these people "rarely" go to Starbucks.  However, the LCA sort of confirms our suspicions of how people consume Starbucks. 
+ 
+-It would be interesting to see if Malaysia also has similar generational differences as the United States with their Millennial and Gen X populations. 
+
+
+Appendix of Survey Questions:
+1. Timestamp
+2. Your Gender 
+  0: Male 1: Female
+3. Your Age	
+  0: Below 20 1: From 20 to 29 2: From 30 to 39 3: 40 and above
+4. Your Profession
+  0: Student 1: Self-Employed 2: Employed 3: Housewife
+5. What is your annual income?(In Malasysian currency)
+  0: Less than RM25,000 1: RM25,000 – RM50,000 2: RM50,000 – RM100,000 3: RM100,000 – RM150,000 4: More than RM150,000
+6. How often do you visit Starbucks?	
+  0: Daily 1: Weekly 3: Monthly 4: Never
+7. How do you usually enjoy Starbucks?	
+  0: Dine In 1: Drive-thru 2: Take away 3: Never 4: Others
+8. How much time do you normally  spend during your visit?
+  0: Below 30 mins 1: 30 mins to 1h 2: 1h to 2h 3: 2h to 3 h 4: More than 3h
+9 The nearest Starbucks's outlet to you is...?
+  0: Within 1km 1: 1km to 3km 2: More than 3km
+10. Do you have Starbucks membership card?	
+  0: Yes 1: No
+11. What do you most frequently purchase at Starbucks?
+
+12. On average, how much would you spend at Starbucks per visit?
+
+13. How would you rate the quality of Starbucks compared to other brands (Coffee Bean, Old Town White Coffee..)? 
+
+14. How would you rate the price range at Starbucks?	
+
+15. How important are sales and promotions in your purchase decision?	
+
+16. How would you rate the ambiance at Starbucks? (lighting, music, etc...)	
+
+17. You rate the WiFi quality at Starbucks as..	
+18. How would you rate the service at Starbucks? (Promptness, friendliness, etc..)	
+19. How likely you will choose Starbucks for doing business meetings or hangout with friends?	
+20. How do you come to hear of promotions at Starbucks? Check all that apply.	
+21. Will you continue buying at Starbucks?
+

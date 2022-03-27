@@ -1,0 +1,354 @@
+---
+title: "Problem Set 7, Winter 2022"
+author: "Krista Miller"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load any packages, if any, that you use as part of your answers here
+# For example: 
+
+library(mlbench)
+library(glmnet)
+library(tidyverse)
+
+```
+
+CONTEXT - HOUSE VALUES IN BOSTON, CIRCA 1970
+
+This dataset was obtained through the mlbench package, which contains a subset of data sets available through the UCI Machine Learning Repository. From the help file:
+
+Housing data for 506 census tracts of Boston from the 1970 census. The dataframe BostonHousing contains the original data by Harrison and Rubinfeld (1979).
+
+The original data are 506 observations on 14 variables.
+
+Continuous variables:
+
+crim	    per capita crime rate by town 
+zn      	proportion of residential land zoned for lots over 25,000 sq.ft  
+indus   	proportion of non-retail business acres per town
+nox	      nitric oxides concentration (parts per 10 million)
+rm	      average number of rooms per dwelling
+age	      proportion of owner-occupied units built prior to 1940
+dis	      weighted distances to five Boston employment centres
+rad	      index of accessibility to radial highways
+tax	      full-value property-tax rate per USD 10,000
+ptratio	  pupil-teacher ratio by town
+b	        1000(B - 0.63)^2 where B is the proportion of blacks by town
+lstat	    percentage of lower status of the population
+medv	    median value of owner-occupied homes in USD 1000's
+
+Categorical variables: 
+
+chas	    Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)
+
+
+## Question 1 - 10 points
+
+The BostonHousing data is contained inside of an R package, so you'll load the data into memory a little differently than usual. Run the following code chunk, confirm that the data in loaded into memory, and ensure that your variables are of the proper type (they should be)
+
+```{r}
+
+data(BostonHousing) # loads the BostonHousing dataset into memory from the mlbench package
+
+str(BostonHousing)
+
+```
+
+For this question, conduct a cross-validated ridge regression. Use medv as the outcome and all of the other variables in the data set as the predictors. Do NOT split your data into training and test sets for this question; conduct the analysis on the whole data set.
+
+First, conduct the cross-validated ridge regression. Be sure to use the set.seed() provided to make your analysis reproducible, and also be sure to run it right before you run the line containing cvfit.house.ridge.
+```{r}
+
+# Your code to get the data into the proper form to conduct cross-validated ridge regression
+
+#http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/153-penalized-regression-essentials-ridge-lasso-elastic-net/
+# according to this article, the intercept component needs to be removed at [,-1]
+
+x<- model.matrix(medv~., BostonHousing)
+y<- BostonHousing$medv
+
+
+# Your code to conduct cross-validated ridge regression
+
+set.seed(1000)
+
+cvfit.house.ridge <- cv.glmnet(x, y, alpha=0) #alpha=0 for ridge regression
+
+```
+
+Next, display the value for lambda.min *and* the coefficients associated with it. Make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.min here
+cvfit.house.ridge$lambda.min
+
+
+# Display the coefficients associated with lambda.min here
+coef(cvfit.house.ridge, s = "lambda.min")
+
+```
+
+Finally, display the value for lambda.1se *and* the coefficients associated with it. Again, make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.1se here
+
+
+
+# Display the coefficients associated with lambda.1se here
+
+
+```
+
+## Question 2 - 10 points
+
+For this question, you will use the same outcome (medv) and the same predictors in the as in the last question, but you will instead conduct a cross-validated lasso regression. Do NOT split your data into training and test sets for this question; conduct the analysis on the whole data set.
+
+First, conduct the cross-validated lasso regression. Be sure to use the set.seed() provided to make your analysis reproducible, and also be sure to run it right before you run the line containing cvfit.house.lasso
+```{r}
+
+# Your code to get the data into the proper form to conduct cross-validated lasso regression
+
+
+
+# Your code to conduct cross-validated lasso regression
+
+set.seed(1000)
+
+cvfit.house.lasso <- # Complete this line
+
+```
+
+Next, display the value for lambda.min and the coefficients associated with it. Make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.min here
+
+
+
+# Display the coefficients associated with lambda.min here
+
+
+```
+
+Finally, display the value for lambda.1se and the coefficients associated with it. Again, make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.1se here
+
+
+
+# Display the coefficients associated with lambda.1se here
+
+
+
+```
+
+## Question 3 - 5 points
+
+An important difference between ridge regression and lasso regression is that predictors can be dropped from a model in lasso but not in ridge. The number of predictors set to zero (if any) in lasso depends on the extent of the coefficient shrinkage at a given lambda. Answer the two questions below about the results of your cross-validated lasso models. 
+
+A) Among the set of coefficients associated with *lambda.min* in the cross-validated lasso regression, which predictors were set to zero? Please list them. 
+
+Your answer here:
+
+B) Among the set of coefficients associated with *lambda.1se* in the cross-validated lasso regression, which predictors were set to zero? Please list them. 
+
+Your answer here:
+
+C) Which of these - lambda.min or lambda.1se - had more coefficients set to zero? 
+
+Your answer here: 
+
+
+---
+
+
+CONTEXT - NATIONAL INDONESIA CONTRACEPTIVE PRELAVENCE SURVEY (1987)
+
+This dataset was obtained from the UCI Machine Learning Repository. From the description on https://archive.ics.uci.edu/ml/datasets/Contraceptive+Method+Choice:
+
+This dataset is a subset of the 1987 National Indonesia Contraceptive Prevalence Survey. The samples are married women who were either not pregnant or do not know if they were at the time of interview. The problem is to predict the current contraceptive method choice (no use, long-term methods, or short-term methods) of a woman based on her demographic and socio-economic characteristics.
+
+Continuous variables
+
+Wife's age (w.age) 
+Number of children ever born (children) 
+
+Categorical variables:
+
+Wife's education (w.edu) 1=low, 2, 3, 4=high 
+Husband's education (h.edu) 1=low, 2, 3, 4=high 
+Wife's religion (w.relig) 0=Non-Islam, 1=Islam 
+Wife's now working? (w.work) 0=Yes, 1=No 
+Husband's occupation (h.occ) 1, 2, 3, 4 
+Standard-of-living index (sol.index) 1=low, 2, 3, 4=high 
+Media exposure (media) 0=Good, 1=Not good 
+Contraceptive method used (contra) 1=No-use, 2=Long-term, 3=Short-term
+
+## Question 4
+
+First, load the data set into memory and change variables into their proper type. 
+
+```{r}
+
+contraception <- read.csv("contra.csv", header=TRUE, sep=",")
+
+```
+
+Next, re-code the contra variable such that non-use of contraception (contra=1) is equal to zero and use of any contraception (contra=2 or 3) is equal to one. 
+
+```{r}
+
+contraception$contra_use <- # Complete this line
+
+```
+
+Now, run the code chunk below to use the table() function to verify that your recoded variable is correct and answer the question below it. 
+
+```{r}
+
+table(contaception$contra)
+table(contraception$contra_use)
+
+```
+
+A) Does the number of 2's and 3's in the original contra variable match the number of 1's in your recoded outcome variable? (Hint: if not, you have a mistake in your recoding)
+
+Your answer here (yes/no): 
+
+One more thing to do: your variables probably all came in as integer, but some of them are categorical variables (included your recoded outcome). Change your variables to the appropriate type
+
+```{r}
+
+# Code to change variable types here
+
+
+
+# Display your data using the str() function to demonstrate that variables have been recoded correctly
+
+
+```
+
+Now that you've recoded your outcome variable, you can now move on to the analysis!
+
+Conduct a cross-validated ridge regression. Use your recoded contraception use variable as the outcome and all of the other variables (except contra) in the data set as the predictors. Do NOT split your data into training and test sets for this question; conduct the analysis on the whole data set.
+
+First, conduct the cross-validated ridge regression. Be sure to use the set.seed() provided to make your analysis reproducible, and also be sure to run it right before you run the line containing cvfit.contra.ridge
+```{r}
+
+# Your code to get the data into the proper form to conduct cross-validated ridge regression
+
+
+
+# Your code to conduct cross-validated ridge regression
+
+set.seed(1000)
+
+cvfit.contra.ridge<- # Complete this line
+
+
+```
+
+Next, display the value for lambda.min and the coefficients associated with it. Make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.min here
+
+
+
+# Display the coefficients associated with lambda.min here
+
+
+
+```
+
+Finally, display the value for lambda.1se and the coefficients associated with it. Again, make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.1se here
+
+
+
+# Display the coefficients associated with lambda.1se here
+
+
+
+```
+
+
+## Question 5
+
+For this question, you will use the same outcome (your binary contraception use variable) and the same predictors in the as in the last question, but you will instead conduct a cross-validated lasso regression. Do NOT split your data into training and test sets for this question; conduct the analysis on the whole data set.
+
+First, conduct the cross-validated lasso regression and display the output the function produces. Be sure to use the set.seed() provided to make your analysis reproducible, and also be sure to run it right before you run the line containing cvfit.contra.lasso
+```{r}
+
+# Your code to get the data into the proper form to conduct cross-validated lasso regression
+
+
+
+# Your code to conduct cross-validated lasso regression
+
+set.seed(1000)
+
+cvfit.contra.lasso <- # Complete this line
+
+```
+
+Next, display the value for lambda.min and the coefficients associated with it. Make sure these are visible in your knitted document. 
+
+```{r}
+
+# Display your lambda.min here
+
+
+
+# Display the coefficients associated with lambda.min here
+
+
+
+```
+
+Finally, display the value for lambda.1se and the coefficients associated with it. Again, make sure these are visible in your knitted document. 
+
+```{r}
+
+
+# Display your lambda.1se here
+
+
+
+# Display the coefficients associated with lambda.1se here
+
+
+
+
+```
+
+
+
+## Question 6 - 5 points
+
+Answer the two questions below about the results of your cross-validated lasso models for the contraception data. 
+
+A) Among the set of coefficients associated with lambda.min in the cross-validated lasso regression, which predictors were set to zero? Please list them. 
+
+Your answer here:
+
+B) Among the set of coefficients associated with lambda.1se in the cross-validated lasso regression, which predictors were set to zero? Please list them. 
+
+Your answer here:
+
+C) Which of these - lambda.min or lambda.1se - had more coefficients set to zero? 
+
+Your answer here: 
